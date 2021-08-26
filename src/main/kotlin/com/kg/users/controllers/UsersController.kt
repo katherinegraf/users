@@ -1,9 +1,10 @@
 package com.kg.users.controllers
 
-import com.kg.users.models.Pet
+import com.kg.users.models.*
 import com.kg.users.models.Users
 import com.kg.users.repo.UsersRepository
 import com.kg.users.services.RestApiService
+import com.kg.users.services.TokenService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpStatus
@@ -18,6 +19,12 @@ class Users {
 
     @Autowired
     val usersRepository: UsersRepository? = null
+
+    @Autowired
+    val restApiService: RestApiService? = null
+
+    @Autowired
+    private lateinit var tokenService: TokenService
 
     @GetMapping("users/all")
     @ResponseBody
@@ -75,7 +82,6 @@ class Users {
             @RequestBody changes: Map<String,String>
     ): ResponseEntity<List<Users>> {
         val userToEdit = usersRepository?.findByIdOrNull(id)
-        logger.info(userToEdit.toString())
         if (userToEdit != null) {
             changes.forEach {
                 when (it.key) {
@@ -116,23 +122,51 @@ class Users {
         return nullsExist
     }
 
-    @PostMapping("users/pets/create")
-    fun createPetForUser(): ResponseEntity<Pet> {
-        val petToCreate = Pet(
-                name = "Sallie",
-                ownerId = 211,
-                age = 21,
-                gender = "F",
-                color = "mixed",
-                type = "cat"
-        )
-        val apiResult = RestApiService.createPetByAPI(petToCreate)
-        logger.info(apiResult.toString())
-        return if (apiResult != null) {
-            ResponseEntity.ok(apiResult)
+    @GetMapping("users/validateSessionToken")
+    fun validateToken(
+            @RequestHeader("TokenId") tokenId: String
+    ): ResponseEntity<Any> {
+        val result = tokenService.validateToken(tokenId)
+        return if (result) {
+            ResponseEntity(HttpStatus.OK)
+        } else {
+            ResponseEntity(HttpStatus.UNAUTHORIZED)
+        }
+    }
+
+    @GetMapping("users/provideToken")
+    fun serveToken(
+            @RequestHeader("User-ID") userId: Long,
+            @RequestHeader("Secret1") username: String,
+            @RequestHeader("Secret2") password: String
+    ): ResponseEntity<PublicToken> {
+        val validateUser = tokenService?.validateUser(username, password)
+        return if (validateUser == true) {
+            val newToken = tokenService!!.generateNewToken(userId)
+            ResponseEntity.ok(newToken)
         } else {
             ResponseEntity(HttpStatus.BAD_REQUEST)
         }
     }
+
+    @GetMapping("users/provideCredentials")
+    fun serveCredentials(
+            @RequestHeader("User-ID") userId: Long
+    ): Credentials? {
+        val user = usersRepository?.findByIdOrNull(userId)
+        return if (user != null) {
+            val credentials = Credentials (
+                    username = user.username,
+                    password = user.password
+            )
+            credentials
+        } else {
+            null
+        }
+    }
+
+
+
+
 
 }

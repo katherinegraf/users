@@ -1,11 +1,11 @@
 package com.kg.users.repo
 
-import com.kg.users.models.Users
+import com.kg.users.models.Token
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface UsersRepository : JpaRepository<Users, Long> {
+interface TokensRepository : JpaRepository<Token, Long> {
 
-    fun findByUsername(username: String): Users?
+    fun findByTokenId(tokenId: String): Token?
 }
